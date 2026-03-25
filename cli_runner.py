@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import time
 import sys
+import uuid
 from config import MODEL, CLI_TIMEOUT
 
 
@@ -43,16 +44,20 @@ def run_claude(prompt, system_prompt=None, model=None):
     """
     model = model or MODEL
 
-    # Build command as a list (Python handles quoting automatically)
-    # --bare skips hooks, CLAUDE.md, plugins, and project context so
-    # experiments get a clean model response without contamination.
+    # Build command as a list.
+    # -p with no argument reads the prompt from stdin — this avoids Windows
+    # CMD script argument mangling for prompts with backticks/newlines.
+    # --session-id with a fresh UUID prevents inheriting the parent Claude Code
+    # session context. --no-session-persistence prevents saving these sessions.
+    # --max-turns 3 allows the model to complete tool-use steps if needed.
     cmd = [
         _claude_cmd(),
-        "-p", prompt,
+        "-p",
         "--model", model,
         "--output-format", "json",
-        "--max-turns", "1",
-        "--bare",
+        "--max-turns", "3",
+        "--no-session-persistence",
+        "--session-id", str(uuid.uuid4()),
     ]
 
     if system_prompt:
@@ -63,6 +68,7 @@ def run_claude(prompt, system_prompt=None, model=None):
     try:
         result = subprocess.run(
             cmd,
+            input=prompt,
             capture_output=True,
             text=True,
             timeout=CLI_TIMEOUT,
