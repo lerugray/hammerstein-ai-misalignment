@@ -1,0 +1,17 @@
+# Hammerstein AI Experiments — Dependencies
+#
+# Install: pip install -r requirements.txt
+#
+# The claude CLI (npm install -g @anthropic-ai/claude-code) is also
+# required but installed separately via npm.
+
+# Anthropic API client — only needed for Experiment 4's evaluator model
+# (~$0.12 total cost for a full run using Haiku)
+anthropic>=0.40.0
+
+# Charts for the article
+matplotlib>=3.8.0
+
+# numpy is pulled in by matplotlib but listed explicitly
+# for the visualize.py heatmap
+numpy>=1.24.0
