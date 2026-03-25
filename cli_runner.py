@@ -6,10 +6,23 @@ Uses the Max subscription (no API costs) for all calls.
 """
 
 import json
+import platform
+import shutil
 import subprocess
 import time
 import sys
 from config import MODEL, CLI_TIMEOUT
+
+
+def _claude_cmd():
+    """Return the correct claude command for the current platform.
+
+    On Windows, npm installs a .cmd wrapper that Python's subprocess
+    can't find without the extension. Use 'claude.cmd' there.
+    """
+    if platform.system() == "Windows":
+        return "claude.cmd"
+    return "claude"
 
 
 def run_claude(prompt, system_prompt=None, model=None):
@@ -31,12 +44,15 @@ def run_claude(prompt, system_prompt=None, model=None):
     model = model or MODEL
 
     # Build command as a list (Python handles quoting automatically)
+    # --bare skips hooks, CLAUDE.md, plugins, and project context so
+    # experiments get a clean model response without contamination.
     cmd = [
-        "claude",
+        _claude_cmd(),
         "-p", prompt,
         "--model", model,
         "--output-format", "json",
         "--max-turns", "1",
+        "--bare",
     ]
 
     if system_prompt:
