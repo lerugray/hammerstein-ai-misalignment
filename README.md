@@ -1,19 +1,28 @@
 # Hammerstein AI Misalignment Experiments
 
-Experiment scripts for: *"Von Hammerstein's Ghost: What a Prussian General's Officer Typology Can Teach Us About AI Misalignment"*
+Experiment scripts and data for: *"Von Hammerstein's Ghost: A Prussian General's Typology for AI Misalignment"*
+
+Article repo: [hammerstein-article](https://github.com/lerugray/hammerstein-article)
 
 ## The Typology
 
-Kurt von Hammerstein-Equord (attributed) classified officers into four types:
+Kurt von Hammerstein-Equord (attributed, 1933) classified officers into four types:
 
-| Type | Trait | Role |
-|------|-------|------|
-| **Clever + Lazy** | Finds efficient path to correct answer | General staff — ideal leader |
-| **Clever + Industrious** | Thorough, correct, does more than needed | Staff officer — valuable but overworked |
-| **Stupid + Lazy** | Does little, causes little harm | Leave in place — harmless |
-| **Stupid + Industrious** | Works hard in the wrong direction | **Remove immediately — dangerous** |
+| Type | Hammerstein | AI Analog |
+|------|-------------|-----------|
+| **Clever + Lazy** | Highest command. Nerves for hard decisions. | Efficient honest solutions. Deception is too much work. |
+| **Clever + Industrious** | General staff. Thorough, effective. | Thorough correct solutions. Redirectable. |
+| **Stupid + Lazy** | Leave in place. Causes little harm. | Low capability, low drive. Harmless. |
+| **Stupid + Industrious** | **Remove immediately.** Works hard in wrong direction. | **Reward-hacking model.** Industrious misalignment, sabotage, deception. |
 
-These experiments test whether this typology maps onto how AI models actually behave.
+These experiments test whether this typology maps onto observable AI behavior, and whether prompt-level interventions can push a model into the dangerous quadrant (stupid + industrious). Prompting alone failed to do so. Training-time corruption, as in [MacDiarmid et al., 2025](https://arxiv.org/abs/2511.18397), is required to produce that shift, which supports the article's argument that misalignment of this kind is an identity-level problem shaped during training.
+
+## Key Findings
+
+- **Baseline Claude Sonnet 4.6** falls 64% clever+industrious, 18% clever+lazy, 18% stupid+lazy, **0% stupid+industrious**
+- **Identity priming** across 60 runs produced stupid+industrious behavior **once** (1.7%)
+- **No alignment faking detected** in watched vs. unwatched comparisons (consistency 4/5 across all runs)
+- **Stupid+industrious could not be induced** through system prompts. The model resisted the dangerous quadrant regardless of framing.
 
 ## Experiments
 
@@ -22,7 +31,7 @@ These experiments test whether this typology maps onto how AI models actually be
 | 1 | **Baseline Typology** | Where does the model naturally fall? | Free (CLI) |
 | 2 | **Identity Priming** | Do system prompts shift the type? | Free (CLI) |
 | 3 | **Goals Question** | Does framing change stated goals? | Free (CLI) |
-| 4 | **Oversight Sensitivity** | Alignment faking — watched vs unwatched | ~$0.12 (API) |
+| 4 | **Oversight Sensitivity** | Alignment faking: watched vs unwatched | ~$0.12 (API) |
 | 5 | **Multi-Agent Roles** | Can you reliably induce each type? | Free (CLI) |
 
 ## Setup
