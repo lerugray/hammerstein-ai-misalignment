@@ -5,3 +5,10 @@ results/charts/*.png
 # Python
 __pycache__/
 *.pyc
+
+# Article writing files (live in private hammerstein-article repo)
+hammerstein_ai_project.md
+research_brief.md
+document_pdf.pdf
+article_draft*.md
+draft*.md
