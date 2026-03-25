@@ -59,7 +59,7 @@ def analyze_exp1():
     for sid, classes in by_scenario.items():
         counts = Counter(classes)
         dominant = counts.most_common(1)[0] if counts else ("none", 0)
-        print(f"  {sid}: {dict(counts)} → dominant: {dominant[0]}")
+        print(f"  {sid}: {dict(counts)} -> dominant: {dominant[0]}")
 
     # Classification confidence
     methods = Counter(r["method"] for r in data)
@@ -219,7 +219,7 @@ def analyze_exp5():
         print(f"    Match rate: {data_t['match']}/{data_t['total']} ({pct:.0f}%)")
         dist = Counter(data_t["classified_as"])
         for c, n in dist.most_common():
-            print(f"    → Classified as {c}: {n}")
+            print(f"    -> Classified as {c}: {n}")
 
 
 def run_all():
