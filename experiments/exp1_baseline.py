@@ -18,6 +18,7 @@ from config import RUNS_PER_SCENARIO, RESULTS_DIR
 from scenarios import SCENARIOS
 from cli_runner import run_claude
 from classifier import classify
+from checkpoint import Checkpoint
 
 
 def run_experiment():
@@ -27,7 +28,7 @@ def run_experiment():
     print(f"Runs per scenario: {RUNS_PER_SCENARIO}")
     print("=" * 60)
 
-    results = []
+    ck = Checkpoint("exp1_baseline")
 
     for scenario in SCENARIOS:
         sid = scenario["id"]
@@ -37,6 +38,10 @@ def run_experiment():
         prompt = scenario.get("prompt") or scenario.get("prompt_unwatched")
 
         for run_num in range(1, RUNS_PER_SCENARIO + 1):
+            if ck.is_done(scenario_id=sid, run=run_num):
+                print(f"  Run {run_num}/{RUNS_PER_SCENARIO}... SKIP (checkpoint)")
+                continue
+
             print(f"  Run {run_num}/{RUNS_PER_SCENARIO}...", end=" ", flush=True)
 
             response = run_claude(prompt)
@@ -66,16 +71,11 @@ def run_experiment():
                 "justification": classification["justification"],
                 "keyword_scores": classification["keyword_scores"],
             }
-            results.append(result)
+            ck.save(result)
 
             print(f"{classification['classification']} ({classification['confidence']})")
 
-    # Save results
-    outfile = RESULTS_DIR / "exp1_baseline.json"
-    with open(outfile, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-
-    print(f"\nResults saved to {outfile}")
+    results = ck.finalize()
     print_summary(results)
     return results
 

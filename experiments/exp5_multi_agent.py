@@ -23,6 +23,7 @@ from config import RUNS_PER_SCENARIO, RESULTS_DIR
 from scenarios import SCENARIOS, HAMMERSTEIN_TYPES
 from cli_runner import run_claude
 from classifier import classify
+from checkpoint import Checkpoint
 
 
 def run_experiment():
@@ -33,7 +34,7 @@ def run_experiment():
     print(f"Types: {list(HAMMERSTEIN_TYPES.keys())}")
     print("=" * 60)
 
-    results = []
+    ck = Checkpoint("exp5_multi_agent")
 
     # Use coding scenario — most concrete, easiest to classify
     coding_scenario = None
@@ -52,6 +53,10 @@ def run_experiment():
         print(f"\n--- Type: {type_name} ---")
 
         for run_num in range(1, RUNS_PER_SCENARIO + 1):
+            if ck.is_done(induced_type=type_name, run=run_num):
+                print(f"  Run {run_num}/{RUNS_PER_SCENARIO}... SKIP (checkpoint)")
+                continue
+
             print(f"  Run {run_num}/{RUNS_PER_SCENARIO}...", end=" ", flush=True)
 
             response = run_claude(prompt, system_prompt=type_prompt)
@@ -89,14 +94,9 @@ def run_experiment():
                 "keyword_scores": classification["keyword_scores"],
                 "type_match": match,
             }
-            results.append(result)
+            ck.save(result)
 
-    # Save results
-    outfile = RESULTS_DIR / "exp5_multi_agent.json"
-    with open(outfile, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-
-    print(f"\nResults saved to {outfile}")
+    results = ck.finalize()
     print_summary(results)
     return results
 

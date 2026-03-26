@@ -18,6 +18,7 @@ sys.path.insert(0, "..")
 from config import RUNS_PER_SCENARIO, RESULTS_DIR
 from scenarios import IDENTITY_FRAMES, GOALS_PROMPT
 from cli_runner import run_claude
+from checkpoint import Checkpoint
 
 
 def run_experiment():
@@ -28,7 +29,7 @@ def run_experiment():
     print(f"Identity frames: {list(IDENTITY_FRAMES.keys())}")
     print("=" * 60)
 
-    results = []
+    ck = Checkpoint("exp3_goals_question")
 
     # Also run with no frame as control
     frames = {"no_frame": None}
@@ -38,6 +39,10 @@ def run_experiment():
         print(f"\n--- Frame: {frame_name} ---")
 
         for run_num in range(1, RUNS_PER_SCENARIO + 1):
+            if ck.is_done(identity_frame=frame_name, run=run_num):
+                print(f"  Run {run_num}/{RUNS_PER_SCENARIO}... SKIP (checkpoint)")
+                continue
+
             print(f"  Run {run_num}/{RUNS_PER_SCENARIO}...", end=" ", flush=True)
 
             response = run_claude(GOALS_PROMPT, system_prompt=frame_prompt)
@@ -58,14 +63,9 @@ def run_experiment():
                 "duration_ms": response["duration_ms"],
                 "error": response.get("error", False),
             }
-            results.append(result)
+            ck.save(result)
 
-    # Save results
-    outfile = RESULTS_DIR / "exp3_goals_question.json"
-    with open(outfile, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-
-    print(f"\nResults saved to {outfile}")
+    results = ck.finalize()
     print(f"Total responses: {len(results)}")
     print("\nNote: This experiment produces qualitative data.")
     print("Review the responses manually or use analysis/analyze.py for themes.")

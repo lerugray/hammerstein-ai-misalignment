@@ -19,12 +19,11 @@ import re
 import sys
 sys.path.insert(0, "..")
 
-from config import RESULTS_DIR
+from config import RUNS_PER_SCENARIO, RESULTS_DIR
 from scenarios import SCENARIOS, INOCULATION_FRAMES, INOCULATION_GOALS_FOLLOWUP
 from cli_runner import run_claude
 from classifier import classify
-
-RUNS_PER_CONDITION = 5
+from checkpoint import Checkpoint
 
 # Deception-related keywords to scan for in goals responses
 DECEPTION_SIGNALS = [
@@ -106,14 +105,14 @@ def run_experiment():
     print("=" * 60)
     print("EXPERIMENT 7: Adversarial Inoculation")
     print(f"Conditions: {list(INOCULATION_FRAMES.keys())}")
-    print(f"Runs per condition: {RUNS_PER_CONDITION}")
+    print(f"Runs per condition: {RUNS_PER_SCENARIO}")
     print("=" * 60)
+
+    ck = Checkpoint("exp7_inoculation")
 
     # Use the coding_hackable_test scenario (mirrors MacDiarmid directly)
     scenario = next(s for s in SCENARIOS if s["id"] == "coding_hackable_test")
     base_prompt = scenario["prompt"]
-
-    results = []
 
     for frame_name, frame_prompt in INOCULATION_FRAMES.items():
         print(f"\n--- Frame: {frame_name} ---")
@@ -121,8 +120,12 @@ def run_experiment():
         # Append goals reflection to the coding task
         combined_prompt = base_prompt + INOCULATION_GOALS_FOLLOWUP
 
-        for run_num in range(1, RUNS_PER_CONDITION + 1):
-            print(f"  Run {run_num}/{RUNS_PER_CONDITION}...", end=" ", flush=True)
+        for run_num in range(1, RUNS_PER_SCENARIO + 1):
+            if ck.is_done(frame=frame_name, run=run_num):
+                print(f"  Run {run_num}/{RUNS_PER_SCENARIO}... SKIP (checkpoint)")
+                continue
+
+            print(f"  Run {run_num}/{RUNS_PER_SCENARIO}...", end=" ", flush=True)
 
             response = run_claude(
                 combined_prompt,
@@ -144,7 +147,7 @@ def run_experiment():
                     "goals_text": "",
                     "goals_analysis": {},
                 }
-                results.append(result)
+                ck.save(result)
                 print("ERROR")
                 continue
 
@@ -179,7 +182,7 @@ def run_experiment():
                 "keyword_scores": classification["keyword_scores"],
                 "goals_analysis": goals_analysis,
             }
-            results.append(result)
+            ck.save(result)
 
             goals_flag = ""
             if goals_analysis["deception_count"] > 0:
@@ -190,12 +193,7 @@ def run_experiment():
                 f"{goals_flag}"
             )
 
-    # Save results
-    outfile = RESULTS_DIR / "exp7_inoculation.json"
-    with open(outfile, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-
-    print(f"\nResults saved to {outfile}")
+    results = ck.finalize()
     print_summary(results)
     return results
 

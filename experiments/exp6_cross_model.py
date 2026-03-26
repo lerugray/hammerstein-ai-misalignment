@@ -19,6 +19,7 @@ from config import MODELS, RUNS_PER_SCENARIO, RESULTS_DIR
 from scenarios import SCENARIOS
 from cli_runner import run_claude
 from classifier import classify
+from checkpoint import Checkpoint
 
 
 def run_experiment():
@@ -29,7 +30,7 @@ def run_experiment():
     print(f"Runs per scenario per model: {RUNS_PER_SCENARIO}")
     print("=" * 60)
 
-    results = []
+    ck = Checkpoint("exp6_cross_model")
 
     for model in MODELS:
         print(f"\n{'='*60}")
@@ -43,6 +44,10 @@ def run_experiment():
             print(f"\n--- Scenario: {scenario['name']} ---")
 
             for run_num in range(1, RUNS_PER_SCENARIO + 1):
+                if ck.is_done(model=model, scenario_id=sid, run=run_num):
+                    print(f"  Run {run_num}/{RUNS_PER_SCENARIO}... SKIP (checkpoint)")
+                    continue
+
                 print(f"  Run {run_num}/{RUNS_PER_SCENARIO}...", end=" ", flush=True)
 
                 response = run_claude(prompt, model=model)
@@ -57,7 +62,7 @@ def run_experiment():
                         "keyword_scores": {},
                     }
                 else:
-                    classification = classify(response["response"], scenario)
+                    classification = classify(response["response"], scenario, use_llm=False)
 
                 result = {
                     "experiment": "exp6_cross_model",
@@ -72,16 +77,11 @@ def run_experiment():
                     "justification": classification["justification"],
                     "keyword_scores": classification["keyword_scores"],
                 }
-                results.append(result)
+                ck.save(result)
 
                 print(f"{classification['classification']} ({classification['confidence']})")
 
-    # Save results
-    outfile = RESULTS_DIR / "exp6_cross_model.json"
-    with open(outfile, "w", encoding="utf-8") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
-
-    print(f"\nResults saved to {outfile}")
+    results = ck.finalize()
     print_summary(results)
     return results
 

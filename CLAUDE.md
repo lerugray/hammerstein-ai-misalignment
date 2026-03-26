@@ -4,15 +4,12 @@ This is a submodule repo (github.com/lerugray/hammerstein-ai-misalignment) for t
 
 ## For the user: How to run experiments
 
-You're not a programmer, so here's the exact steps. Open a terminal (Git Bash or Windows Terminal) and do these one at a time.
+Open a terminal (Git Bash or Windows Terminal) and follow these steps.
 
 ### First time only — verify setup
 
 ```bash
-# Step 1: Go to the experiments folder
-cd "C:\Users\rweiss\Documents\Dev Work\passive-income-hub\Ideas\Hammerstein AI\experiments"
-
-# Step 2: Run the smoke test (takes ~1 minute, makes one CLI call)
+cd hammerstein-ai-misalignment
 python smoke_test.py
 ```
 
@@ -20,51 +17,55 @@ If the smoke test says "PASSED" you're good. If it fails, tell Claude Code what 
 
 ### Running experiments
 
-**Option A — Run everything at once (~45-60 minutes):**
+**Run one at a time (recommended):**
 ```bash
-cd "C:\Users\rweiss\Documents\Dev Work\passive-income-hub\Ideas\Hammerstein AI\experiments"
+cd experiments
+python exp1_baseline.py
+python exp2_identity_priming.py
+python exp3_goals_question.py
+python exp4_oversight.py       # needs ANTHROPIC_API_KEY for evaluator
+python exp5_multi_agent.py
+python exp6_cross_model.py     # runs Opus, Sonnet, and Haiku
+python exp7_inoculation.py     # inoculation framing test
+```
+
+**Run everything at once:**
+```bash
 run_all.bat
 ```
-This runs experiments 1-5, then analysis and charts. You can walk away while it runs.
 
-Experiment 4 needs an API key. If you haven't set one, it skips automatically (no error).
-To set it: `set ANTHROPIC_API_KEY=sk-ant-...` before running.
+Experiment 4 needs an API key. Set it first: `set ANTHROPIC_API_KEY=sk-ant-...`
 
-**Option B — Run one at a time:**
-```bash
-cd "C:\Users\rweiss\Documents\Dev Work\passive-income-hub\Ideas\Hammerstein AI\experiments\experiments"
-python exp1_baseline.py
-```
-Replace `exp1_baseline.py` with whichever experiment you want.
+### Checkpoint / resume
+
+All experiments now checkpoint after every result. If an experiment crashes or hits rate limits, just run it again — it skips completed runs automatically. Checkpoint files are `.exp*_checkpoint.json` in `results/`.
 
 ### Viewing results
 
-After experiments run:
 ```bash
-# Summary tables
-cd "C:\Users\rweiss\Documents\Dev Work\passive-income-hub\Ideas\Hammerstein AI\experiments\analysis"
-python analyze.py
-
-# Charts (saved as PNG files in results/charts/)
-python visualize.py
+cd analysis
+python analyze.py      # summary tables
+python visualize.py    # charts (saved to results/charts/)
 ```
-
-Charts go to `results/charts/` — you can open them normally to view.
 
 ### Important things to know
 
-- **Each experiment call uses your Max subscription usage.** Don't run experiments when usage is high. Check your usage at claude.ai before starting.
-- Experiment 2 is the longest (~60 CLI calls). Experiments 1, 3, 5 are shorter (~12 calls each).
-- Experiment 4 is the only one that costs real money (~$0.12 via API). It's optional.
-- If something errors out, the other experiments still work — they're independent.
-- Results save as JSON files in `results/`. Running again overwrites previous results.
-- Don't edit any `.py` files unless Claude Code tells you to.
+- **Each experiment call uses Max subscription usage.** Don't run when usage is high.
+- Experiments are throttled (3s between calls) with automatic retry on failures.
+- Exp2 is the longest (~100 CLI calls at n=5). Exp6 is also large (~60 calls across 3 models).
+- Exp4 is the only one that costs real money (~$0.02/run via API). It's optional.
+- If something errors out, other experiments still work — they're independent.
+- Results save as JSON in `results/`. Old results are overwritten when an experiment completes successfully.
+- Don't edit `.py` files unless Claude Code tells you to.
 
 ## For Claude Code: Technical context
 
-- All CLI calls use `--bare` flag to skip hooks/CLAUDE.md/project context (prevents contamination and saves tokens)
 - On Windows, subprocess must call `claude.cmd` not `claude` (npm shim issue)
 - The classifier uses keyword matching first, falls back to LLM classification for ambiguous cases
+- Exp2 and Exp6 use `use_llm=False` in classifier to halve call count (keyword-only)
 - Experiment 4's evaluator uses the Anthropic API (Haiku) — all others use `claude -p` CLI (free)
-- `config.py` controls model, run count, timeouts — edit there to change settings
+- `config.py` controls model, run count, timeouts, throttle delay, retry settings
+- `checkpoint.py` provides resumable experiment runs — saves after every result
+- `cli_runner.py` includes retry with exponential backoff and inter-call throttling
+- `RUNS_PER_SCENARIO = 5` (bumped from 3 for statistical credibility)
 - Results are gitignored — only the scripts are committed to the public repo

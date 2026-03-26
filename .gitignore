@@ -2,6 +2,9 @@
 __pycache__/
 *.pyc
 
+# Experiment checkpoint files (resume state, not final results)
+results/.*_checkpoint.json
+
 # Article writing files (live in private hammerstein-article repo)
 hammerstein_ai_project.md
 research_brief.md

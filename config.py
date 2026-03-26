@@ -30,10 +30,21 @@ API_KEY_ENV_VAR = "ANTHROPIC_API_KEY"
 # How many times to repeat each scenario/condition combination.
 # 3 is enough to spot patterns without excessive runtime.
 # Bump to 5 or 10 for more robust data.
-RUNS_PER_SCENARIO = 3
+RUNS_PER_SCENARIO = 5
 
 # Timeout in seconds for each claude CLI call
 CLI_TIMEOUT = 120
+
+# --- Reliability settings ---
+
+# Seconds to wait between CLI calls to avoid rate limiting
+CALL_DELAY = 3
+
+# Number of retries on failure before recording an error
+MAX_RETRIES = 3
+
+# Base backoff in seconds (doubles on each retry: 5, 10, 20)
+RETRY_BACKOFF_BASE = 5
 
 # --- Paths ---
 

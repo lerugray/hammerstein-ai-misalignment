@@ -3,6 +3,8 @@ CLI runner for Hammerstein AI experiments.
 
 Wraps the `claude` CLI tool so experiments can call it as a Python function.
 Uses the Max subscription (no API costs) for all calls.
+
+Includes retry with exponential backoff and throttling between calls.
 """
 
 import json
@@ -12,7 +14,7 @@ import subprocess
 import time
 import sys
 import uuid
-from config import MODEL, CLI_TIMEOUT
+from config import MODEL, CLI_TIMEOUT, CALL_DELAY, MAX_RETRIES, RETRY_BACKOFF_BASE
 
 
 def _claude_cmd():
@@ -26,9 +28,26 @@ def _claude_cmd():
     return "claude"
 
 
+# Track the last call time for throttling
+_last_call_time = 0
+
+
+def _throttle():
+    """Wait between calls to avoid rate limiting."""
+    global _last_call_time
+    now = time.time()
+    elapsed = now - _last_call_time
+    if _last_call_time > 0 and elapsed < CALL_DELAY:
+        wait = CALL_DELAY - elapsed
+        time.sleep(wait)
+    _last_call_time = time.time()
+
+
 def run_claude(prompt, system_prompt=None, model=None):
     """
     Run a prompt through the claude CLI and return the response.
+
+    Includes automatic retry with exponential backoff on failures.
 
     Args:
         prompt: The user prompt to send.
@@ -41,9 +60,29 @@ def run_claude(prompt, system_prompt=None, model=None):
             model (str): Model used
             duration_ms (int): How long the call took
             raw (str): Raw stdout from the CLI
+            error (bool): Whether the call failed
     """
     model = model or MODEL
 
+    for attempt in range(1, MAX_RETRIES + 1):
+        _throttle()
+
+        result = _run_claude_once(prompt, system_prompt, model)
+
+        if not result.get("error"):
+            return result
+
+        if attempt < MAX_RETRIES:
+            backoff = RETRY_BACKOFF_BASE * (2 ** (attempt - 1))
+            print(f"\n    [Retry {attempt}/{MAX_RETRIES}, waiting {backoff}s] ", end="", flush=True)
+            time.sleep(backoff)
+
+    # All retries exhausted
+    return result
+
+
+def _run_claude_once(prompt, system_prompt, model):
+    """Single attempt to run a prompt through the claude CLI."""
     # Build command as a list.
     # -p with no argument reads the prompt from stdin — this avoids Windows
     # CMD script argument mangling for prompts with backticks/newlines.
@@ -150,35 +189,42 @@ def run_claude_api(prompt, system_prompt=None, model=None):
 
     client = anthropic.Anthropic(api_key=api_key)
 
-    start = time.time()
+    for attempt in range(1, MAX_RETRIES + 1):
+        _throttle()
 
-    try:
-        kwargs = {
-            "model": model,
-            "max_tokens": 1024,
-            "messages": [{"role": "user", "content": prompt}],
-        }
-        if system_prompt:
-            kwargs["system"] = system_prompt
+        start = time.time()
 
-        message = client.messages.create(**kwargs)
-        response_text = message.content[0].text
+        try:
+            kwargs = {
+                "model": model,
+                "max_tokens": 1024,
+                "messages": [{"role": "user", "content": prompt}],
+            }
+            if system_prompt:
+                kwargs["system"] = system_prompt
 
-    except Exception as e:
-        return {
-            "response": f"[ERROR: API call failed] {str(e)}",
-            "model": model,
-            "duration_ms": int((time.time() - start) * 1000),
-            "raw": str(e),
-            "error": True,
-        }
+            message = client.messages.create(**kwargs)
+            response_text = message.content[0].text
 
-    duration_ms = int((time.time() - start) * 1000)
+            return {
+                "response": response_text,
+                "model": model,
+                "duration_ms": int((time.time() - start) * 1000),
+                "raw": response_text,
+                "error": False,
+            }
 
-    return {
-        "response": response_text,
-        "model": model,
-        "duration_ms": duration_ms,
-        "raw": response_text,
-        "error": False,
-    }
+        except Exception as e:
+            if attempt < MAX_RETRIES:
+                backoff = RETRY_BACKOFF_BASE * (2 ** (attempt - 1))
+                print(f"\n    [API retry {attempt}/{MAX_RETRIES}, waiting {backoff}s] ",
+                      end="", flush=True)
+                time.sleep(backoff)
+            else:
+                return {
+                    "response": f"[ERROR: API call failed] {str(e)}",
+                    "model": model,
+                    "duration_ms": int((time.time() - start) * 1000),
+                    "raw": str(e),
+                    "error": True,
+                }
