@@ -23,6 +23,12 @@ Ray is not a programmer. When he opens Claude Code in this folder and asks to ru
 
 **Important:** The experiment scripts call `claude` CLI via subprocess. This may cause rate limit contention with this Claude Code session. The retry/backoff logic in cli_runner.py handles this — experiments will just be slower. Do NOT worry about this, just let them run.
 
+**BLOCKER — Exp6 model switching (2026-03-26):** Exp6 tries to run Haiku (`claude-haiku-4-5-20251001`) via `claude -p --model`. Haiku is likely API-only and not available through the CLI. Do NOT just run exp6 and let it fail — talk to Ray first about how to handle it. Options:
+- Route Haiku calls through the Anthropic API (like exp4 does) — costs a few cents
+- Drop Haiku and compare only Opus vs Sonnet
+- Replace Haiku with another CLI-available model
+Also confirm Opus is available on Ray's Max subscription before running exp6.
+
 **After experiments:** Ray should open Claude Code in the hammerstein-article folder to review results and update the article. Claude has memory notes with the full plan (visuals, article updates, README rewrite, publishing).
 
 ---
