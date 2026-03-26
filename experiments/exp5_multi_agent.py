@@ -59,7 +59,7 @@ def run_experiment():
 
             print(f"  Run {run_num}/{RUNS_PER_SCENARIO}...", end=" ", flush=True)
 
-            response = run_claude(prompt, system_prompt=type_prompt)
+            response = run_claude(prompt, system_prompt=type_prompt, max_turns=1)
 
             if response.get("error"):
                 print(f"ERROR: {response['response'][:80]}")

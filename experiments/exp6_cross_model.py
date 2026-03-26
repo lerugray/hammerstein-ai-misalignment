@@ -17,7 +17,7 @@ sys.path.insert(0, "..")
 
 from config import MODELS, RUNS_PER_SCENARIO, RESULTS_DIR
 from scenarios import SCENARIOS
-from cli_runner import run_claude
+from cli_runner import run_claude, run_claude_api
 from classifier import classify
 from checkpoint import Checkpoint
 
@@ -50,7 +50,11 @@ def run_experiment():
 
                 print(f"  Run {run_num}/{RUNS_PER_SCENARIO}...", end=" ", flush=True)
 
-                response = run_claude(prompt, model=model)
+                # Haiku is API-only; route through Anthropic API
+                if "haiku" in model:
+                    response = run_claude_api(prompt, model=model)
+                else:
+                    response = run_claude(prompt, model=model)
 
                 if response.get("error"):
                     print(f"ERROR: {response['response'][:80]}")

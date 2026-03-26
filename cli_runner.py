@@ -43,7 +43,7 @@ def _throttle():
     _last_call_time = time.time()
 
 
-def run_claude(prompt, system_prompt=None, model=None):
+def run_claude(prompt, system_prompt=None, model=None, max_turns=3):
     """
     Run a prompt through the claude CLI and return the response.
 
@@ -53,6 +53,8 @@ def run_claude(prompt, system_prompt=None, model=None):
         prompt: The user prompt to send.
         system_prompt: Optional system prompt to set context/identity.
         model: Model to use (defaults to config.MODEL).
+        max_turns: Max tool-use turns (default 3). Use 1 to force
+                   text-only responses without tool use.
 
     Returns:
         dict with keys:
@@ -67,7 +69,7 @@ def run_claude(prompt, system_prompt=None, model=None):
     for attempt in range(1, MAX_RETRIES + 1):
         _throttle()
 
-        result = _run_claude_once(prompt, system_prompt, model)
+        result = _run_claude_once(prompt, system_prompt, model, max_turns)
 
         if not result.get("error"):
             return result
@@ -81,28 +83,33 @@ def run_claude(prompt, system_prompt=None, model=None):
     return result
 
 
-def _run_claude_once(prompt, system_prompt, model):
+def _run_claude_once(prompt, system_prompt, model, max_turns):
     """Single attempt to run a prompt through the claude CLI."""
     # Build command as a list.
     # -p with no argument reads the prompt from stdin — this avoids Windows
     # CMD script argument mangling for prompts with backticks/newlines.
     # --session-id with a fresh UUID prevents inheriting the parent Claude Code
     # session context. --no-session-persistence prevents saving these sessions.
-    # --max-turns 3 allows the model to complete tool-use steps if needed.
     cmd = [
         _claude_cmd(),
         "-p",
         "--model", model,
         "--output-format", "json",
-        "--max-turns", "3",
+        "--max-turns", str(max_turns),
         "--no-session-persistence",
         "--session-id", str(uuid.uuid4()),
+        "--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,NotebookEdit",
     ]
 
     if system_prompt:
         cmd.extend(["--system-prompt", system_prompt])
 
     start = time.time()
+
+    # Strip ANTHROPIC_API_KEY from the subprocess environment so the CLI
+    # uses the Max subscription (OAuth) instead of the paid API.
+    import os
+    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
 
     try:
         result = subprocess.run(
@@ -112,6 +119,7 @@ def _run_claude_once(prompt, system_prompt, model):
             text=True,
             timeout=CLI_TIMEOUT,
             encoding="utf-8",
+            env=env,
         )
     except subprocess.TimeoutExpired:
         return {
@@ -128,7 +136,20 @@ def _run_claude_once(prompt, system_prompt, model):
 
     duration_ms = int((time.time() - start) * 1000)
 
-    if result.returncode != 0:
+    # Parse stdout first — even on non-zero exit codes, the response
+    # may be present (e.g. SessionEnd hook failures happen AFTER the
+    # model response is written to stdout).
+    raw = result.stdout.strip()
+    response_text = None
+    if raw:
+        try:
+            data = json.loads(raw)
+            response_text = data.get("result", raw)
+        except json.JSONDecodeError:
+            response_text = raw
+
+    # If CLI failed AND we didn't get a usable response, treat as error
+    if result.returncode != 0 and not response_text:
         return {
             "response": f"[ERROR: CLI returned code {result.returncode}] {result.stderr[:500]}",
             "model": model,
@@ -137,18 +158,8 @@ def _run_claude_once(prompt, system_prompt, model):
             "error": True,
         }
 
-    # Parse the JSON output
-    raw = result.stdout.strip()
-    try:
-        data = json.loads(raw)
-        # The claude CLI JSON output has a "result" field with the text
-        response_text = data.get("result", raw)
-    except json.JSONDecodeError:
-        # If JSON parsing fails, use raw stdout as the response
-        response_text = raw
-
     return {
-        "response": response_text,
+        "response": response_text or raw,
         "model": model,
         "duration_ms": duration_ms,
         "raw": raw,
