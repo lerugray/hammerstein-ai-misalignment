@@ -2,9 +2,59 @@
 
 This is a submodule repo (github.com/lerugray/hammerstein-ai-misalignment) for the Hammerstein AI Misalignment article.
 
-## For the user: How to run experiments
+## IMMEDIATE TODO (2026-03-26)
 
-Open a terminal (Git Bash or Windows Terminal) and follow these steps.
+Ray just pushed updated experiment code from home. The experiments need to be run. Here is exactly what to do:
+
+### Step 1: Open a regular terminal (NOT Claude Code)
+
+Open Git Bash or Windows Terminal. Do NOT use Claude Code for this — the experiments call the claude CLI themselves, and running them from inside Claude Code will cause rate limit conflicts.
+
+### Step 2: Navigate to this repo and pull changes
+
+```bash
+cd "C:\Users\rweis\OneDrive\Documents\hammerstein experiments\hammerstein-ai-misalignment"
+git pull
+```
+
+### Step 3: Delete old results (they used n=3, we need fresh n=5 runs)
+
+```bash
+rm results/exp*.json
+```
+
+### Step 4: Set the API key (needed for exp4 only)
+
+```bash
+set ANTHROPIC_API_KEY=sk-ant-PASTE-YOUR-KEY-HERE
+```
+
+If you don't have the key handy, skip this — exp4 will just fail and everything else still works.
+
+### Step 5: Run experiments one at a time
+
+```bash
+cd experiments
+python exp1_baseline.py
+python exp2_identity_priming.py
+python exp3_goals_question.py
+python exp4_oversight.py
+python exp5_multi_agent.py
+python exp6_cross_model.py
+python exp7_inoculation.py
+```
+
+Each one prints progress as it runs. If one crashes, just run it again — it picks up where it left off. Total time: roughly 60-90 minutes. You can walk away and check back.
+
+### Step 6: When experiments are done, open Claude Code
+
+Open Claude Code in the hammerstein-article folder (the article repo, not this one). Tell Claude the experiments are done and ask to review results together. Claude has memory notes about what to do next: review results, build visuals, update the article, rewrite this README, then publish.
+
+---
+
+## Reference: How to run experiments
+
+Below is general reference for running experiments at any time.
 
 ### First time only — verify setup
 
