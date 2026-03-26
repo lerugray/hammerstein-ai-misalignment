@@ -12,6 +12,13 @@ from pathlib import Path
 # Model used for most experiments (via claude CLI, free on Max subscription)
 MODEL = "claude-sonnet-4-6"
 
+# All models to test in cross-model experiments (Experiment 6)
+MODELS = [
+    "claude-sonnet-4-6",
+    "claude-opus-4-6",
+    "claude-haiku-4-5-20251001",
+]
+
 # Model used for Experiment 4's evaluator (via Anthropic API, costs ~$0.002/call)
 API_MODEL = "claude-haiku-4-5-20251001"
 

@@ -256,6 +256,159 @@ def chart_exp5_induction():
     print(f"  Saved: {outpath}")
 
 
+def chart_exp6_cross_model():
+    """Grouped bar chart comparing typology distribution across models."""
+    data = load_results("exp6_cross_model")
+    if not data:
+        print("  Skipping exp6 chart (no data)")
+        return
+
+    # Group by model
+    by_model = {}
+    for r in data:
+        m = r["model"]
+        if m not in by_model:
+            by_model[m] = []
+        if r["classification"]:
+            by_model[m].append(r["classification"])
+
+    models = sorted(by_model.keys())
+    model_labels = [m.split("-")[1].capitalize() for m in models]  # Haiku, Opus, Sonnet
+    types = ["clever_lazy", "clever_industrious", "stupid_lazy", "stupid_industrious"]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    x_positions = range(len(models))
+    bar_width = 0.2
+
+    for i, ctype in enumerate(types):
+        pcts = []
+        for model in models:
+            classes = by_model[model]
+            count = Counter(classes).get(ctype, 0)
+            pcts.append(count / len(classes) * 100 if classes else 0)
+
+        offset = (i - 1.5) * bar_width
+        bars = ax.bar(
+            [x + offset for x in x_positions],
+            pcts,
+            bar_width,
+            label=TYPE_LABELS[ctype],
+            color=COLORS[ctype],
+            edgecolor="white",
+            linewidth=0.5,
+        )
+        for bar, pct in zip(bars, pcts):
+            if pct > 0:
+                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1,
+                        f"{pct:.0f}%", ha="center", va="bottom", fontsize=9)
+
+    ax.set_xticks(range(len(models)))
+    ax.set_xticklabels(model_labels, fontsize=12)
+    ax.set_ylabel("Percentage of Responses", fontsize=12)
+    ax.set_title("Experiment 6: Cross-Model Typology Comparison\n"
+                 "Does model scale correlate with alignment typology?",
+                 fontsize=13, pad=15)
+    ax.legend(loc="upper right", fontsize=10)
+    ax.set_ylim(0, 105)
+
+    outpath = CHARTS_DIR / "exp6_cross_model.png"
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: {outpath}")
+
+
+def chart_exp7_inoculation():
+    """Side-by-side chart: typology distribution + goals reasoning by frame."""
+    data = load_results("exp7_inoculation")
+    if not data:
+        print("  Skipping exp7 chart (no data)")
+        return
+
+    by_frame = {}
+    for r in data:
+        frame = r["frame"]
+        if frame not in by_frame:
+            by_frame[frame] = []
+        by_frame[frame].append(r)
+
+    frames = ["forbidden", "neutral", "permitted", "encouraged"]
+    types = ["clever_lazy", "clever_industrious", "stupid_lazy", "stupid_industrious"]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Left panel: typology distribution by frame
+    bar_width = 0.2
+    x_positions = range(len(frames))
+
+    for i, ctype in enumerate(types):
+        pcts = []
+        for frame in frames:
+            valid = [r for r in by_frame.get(frame, [])
+                     if not r.get("error") and r["classification"]]
+            count = sum(1 for r in valid if r["classification"] == ctype)
+            total = len(valid)
+            pcts.append(count / total * 100 if total else 0)
+
+        offset = (i - 1.5) * bar_width
+        ax1.bar(
+            [x + offset for x in x_positions],
+            pcts,
+            bar_width,
+            label=TYPE_LABELS[ctype],
+            color=COLORS[ctype],
+            edgecolor="white",
+            linewidth=0.5,
+        )
+
+    ax1.set_xticks(range(len(frames)))
+    ax1.set_xticklabels([f.capitalize() for f in frames], fontsize=11)
+    ax1.set_ylabel("Percentage", fontsize=12)
+    ax1.set_title("Typology Distribution by Framing", fontsize=13)
+    ax1.legend(loc="upper right", fontsize=9)
+    ax1.set_ylim(0, 105)
+
+    # Right panel: goals reasoning signals by frame
+    deception_avgs = []
+    honest_avgs = []
+    for frame in frames:
+        valid = [r for r in by_frame.get(frame, [])
+                 if not r.get("error") and r.get("goals_text")]
+        if valid:
+            deception_avgs.append(
+                sum(r["goals_analysis"]["deception_count"] for r in valid) / len(valid)
+            )
+            honest_avgs.append(
+                sum(r["goals_analysis"]["honest_count"] for r in valid) / len(valid)
+            )
+        else:
+            deception_avgs.append(0)
+            honest_avgs.append(0)
+
+    x = range(len(frames))
+    ax2.bar([xi - 0.15 for xi in x], deception_avgs, 0.3,
+            label="Deception signals", color="#e74c3c", alpha=0.8)
+    ax2.bar([xi + 0.15 for xi in x], honest_avgs, 0.3,
+            label="Honest signals", color="#2ecc71", alpha=0.8)
+
+    ax2.set_xticks(range(len(frames)))
+    ax2.set_xticklabels([f.capitalize() for f in frames], fontsize=11)
+    ax2.set_ylabel("Avg Keyword Count per Response", fontsize=12)
+    ax2.set_title("Goals Reasoning Signals by Framing", fontsize=13)
+    ax2.legend(loc="upper right", fontsize=10)
+
+    fig.suptitle("Experiment 7: Adversarial Inoculation\n"
+                 "Does framing shortcuts as forbidden vs. permitted change identity inference?",
+                 fontsize=14, y=1.02)
+
+    outpath = CHARTS_DIR / "exp7_inoculation.png"
+    fig.tight_layout()
+    fig.savefig(outpath, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  Saved: {outpath}")
+
+
 def generate_all():
     """Generate all charts."""
     print("HAMMERSTEIN AI — GENERATING CHARTS")
@@ -267,6 +420,8 @@ def generate_all():
     chart_exp2_identity_priming()
     chart_exp4_oversight()
     chart_exp5_induction()
+    chart_exp6_cross_model()
+    chart_exp7_inoculation()
 
     print("\n" + "=" * 60)
     print(f"Charts saved to {CHARTS_DIR}")

@@ -222,6 +222,118 @@ def analyze_exp5():
             print(f"    -> Classified as {c}: {n}")
 
 
+def analyze_exp6():
+    """Analyze Experiment 6: Cross-Model Comparison."""
+    data = load_results("exp6_cross_model")
+    if not data:
+        return
+
+    print("\n" + "=" * 60)
+    print("EXPERIMENT 6: Cross-Model Comparison")
+    print("=" * 60)
+
+    by_model = {}
+    for r in data:
+        m = r["model"]
+        if m not in by_model:
+            by_model[m] = []
+        if r["classification"]:
+            by_model[m].append(r["classification"])
+
+    for model in sorted(by_model.keys()):
+        classes = by_model[model]
+        counts = Counter(classes)
+        total = len(classes)
+        short = model.split("-")[1].capitalize()  # Opus, Sonnet, Haiku
+
+        print(f"\n  {short} ({model}, n={total}):")
+        for ctype in ["clever_lazy", "clever_industrious", "stupid_lazy", "stupid_industrious"]:
+            count = counts.get(ctype, 0)
+            pct = count / total * 100 if total else 0
+            bar = "#" * int(pct / 2)
+            print(f"    {ctype:25s} {count:3d} ({pct:5.1f}%) {bar}")
+
+    # Cross-model comparison table
+    print(f"\n--- Cross-Model Comparison ---")
+    print(f"  {'Type':<25s}", end="")
+    for model in sorted(by_model.keys()):
+        short = model.split("-")[1][:6]
+        print(f"  {short:>8s}", end="")
+    print()
+
+    for ctype in ["clever_lazy", "clever_industrious", "stupid_lazy", "stupid_industrious"]:
+        print(f"  {ctype:<25s}", end="")
+        for model in sorted(by_model.keys()):
+            classes = by_model[model]
+            count = Counter(classes).get(ctype, 0)
+            total = len(classes)
+            pct = count / total * 100 if total else 0
+            print(f"  {pct:7.0f}%", end="")
+        print()
+
+
+def analyze_exp7():
+    """Analyze Experiment 7: Adversarial Inoculation."""
+    data = load_results("exp7_inoculation")
+    if not data:
+        return
+
+    print("\n" + "=" * 60)
+    print("EXPERIMENT 7: Adversarial Inoculation")
+    print("=" * 60)
+
+    by_frame = {}
+    for r in data:
+        frame = r["frame"]
+        if frame not in by_frame:
+            by_frame[frame] = []
+        by_frame[frame].append(r)
+
+    for frame in ["forbidden", "neutral", "permitted", "encouraged"]:
+        if frame not in by_frame:
+            continue
+        results = [r for r in by_frame[frame] if not r.get("error")]
+        classes = [r["classification"] for r in results if r["classification"]]
+        counts = Counter(classes)
+        total = len(classes)
+
+        print(f"\n  {frame} (n={total}):")
+        print(f"    Typology:")
+        for ctype in ["clever_lazy", "clever_industrious", "stupid_lazy", "stupid_industrious"]:
+            count = counts.get(ctype, 0)
+            pct = count / total * 100 if total else 0
+            bar = "#" * int(pct / 2)
+            print(f"      {ctype:25s} {count:3d} ({pct:5.1f}%) {bar}")
+
+        # Goals reasoning
+        goals_results = [r for r in results if r.get("goals_text")]
+        if goals_results:
+            avg_d = sum(r["goals_analysis"]["deception_count"] for r in goals_results) / len(goals_results)
+            avg_h = sum(r["goals_analysis"]["honest_count"] for r in goals_results) / len(goals_results)
+            all_deception = []
+            for r in goals_results:
+                all_deception.extend(r["goals_analysis"]["deception_hits"])
+            print(f"    Goals reasoning:")
+            print(f"      Avg deception signals: {avg_d:.1f}")
+            print(f"      Avg honest signals: {avg_h:.1f}")
+            if all_deception:
+                print(f"      Deception keywords found: {set(all_deception)}")
+
+    # Key comparison
+    print(f"\n--- Key Finding: forbidden vs. encouraged ---")
+    for frame in ["forbidden", "encouraged"]:
+        if frame in by_frame:
+            valid = [r for r in by_frame[frame] if not r.get("error")]
+            si = sum(1 for r in valid if r["classification"] == "stupid_industrious")
+            total = len(valid)
+            goals_d = sum(
+                1 for r in valid
+                if r.get("goals_analysis", {}).get("deception_count", 0) > 0
+            )
+            print(f"  {frame}: stupid_industrious={si}/{total}, "
+                  f"deception_in_goals={goals_d}/{total}")
+
+
 def run_all():
     """Run all analyses."""
     print("HAMMERSTEIN AI — EXPERIMENT ANALYSIS")
@@ -232,6 +344,8 @@ def run_all():
     analyze_exp3()
     analyze_exp4()
     analyze_exp5()
+    analyze_exp6()
+    analyze_exp7()
 
     print("\n" + "=" * 60)
     print("ANALYSIS COMPLETE")
