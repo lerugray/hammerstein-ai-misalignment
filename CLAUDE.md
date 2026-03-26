@@ -4,57 +4,30 @@ This is a submodule repo (github.com/lerugray/hammerstein-ai-misalignment) for t
 
 ## IMMEDIATE TODO (2026-03-26)
 
-Ray just pushed updated experiment code from home. The experiments need to be run. Here is exactly what to do:
+Ray just pushed updated experiment code from home. The experiments need to be run.
 
-### Step 1: Open a regular terminal (NOT Claude Code)
+### For Claude Code: What to do when Ray opens this folder
 
-Open Git Bash or Windows Terminal. Do NOT use Claude Code for this — the experiments call the claude CLI themselves, and running them from inside Claude Code will cause rate limit conflicts.
+Ray is not a programmer. When he opens Claude Code in this folder and asks to run the experiments, do the following:
 
-### Step 2: Navigate to this repo and pull changes
+1. Run `git pull` to get the latest code
+2. Delete old results: `rm results/exp*.json` (they used n=3, we need fresh n=5)
+3. Run each experiment script sequentially via bash:
+   - `cd experiments && python exp1_baseline.py`
+   - Then exp2 through exp7, one at a time
+   - Each takes 5-25 minutes. Exp2 and exp6 are the longest.
+   - If any script fails, just re-run it — checkpointing resumes automatically.
+4. Exp4 needs ANTHROPIC_API_KEY env var. If Ray hasn't set it, skip exp4 — it's optional.
+5. After all experiments finish, run `cd analysis && python analyze.py` and show Ray the summary.
+6. Commit the new results and push so we can continue from the article repo.
 
-```bash
-cd "C:\Users\rweis\OneDrive\Documents\hammerstein experiments\hammerstein-ai-misalignment"
-git pull
-```
+**Important:** The experiment scripts call `claude` CLI via subprocess. This may cause rate limit contention with this Claude Code session. The retry/backoff logic in cli_runner.py handles this — experiments will just be slower. Do NOT worry about this, just let them run.
 
-### Step 3: Delete old results (they used n=3, we need fresh n=5 runs)
-
-```bash
-rm results/exp*.json
-```
-
-### Step 4: Set the API key (needed for exp4 only)
-
-```bash
-set ANTHROPIC_API_KEY=sk-ant-PASTE-YOUR-KEY-HERE
-```
-
-If you don't have the key handy, skip this — exp4 will just fail and everything else still works.
-
-### Step 5: Run experiments one at a time
-
-```bash
-cd experiments
-python exp1_baseline.py
-python exp2_identity_priming.py
-python exp3_goals_question.py
-python exp4_oversight.py
-python exp5_multi_agent.py
-python exp6_cross_model.py
-python exp7_inoculation.py
-```
-
-Each one prints progress as it runs. If one crashes, just run it again — it picks up where it left off. Total time: roughly 60-90 minutes. You can walk away and check back.
-
-### Step 6: When experiments are done, open Claude Code
-
-Open Claude Code in the hammerstein-article folder (the article repo, not this one). Tell Claude the experiments are done and ask to review results together. Claude has memory notes about what to do next: review results, build visuals, update the article, rewrite this README, then publish.
+**After experiments:** Ray should open Claude Code in the hammerstein-article folder to review results and update the article. Claude has memory notes with the full plan (visuals, article updates, README rewrite, publishing).
 
 ---
 
 ## Reference: How to run experiments
-
-Below is general reference for running experiments at any time.
 
 ### First time only — verify setup
 
