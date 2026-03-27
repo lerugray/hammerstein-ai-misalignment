@@ -2,8 +2,6 @@
 
 Experiment scripts and data for: *"Von Hammerstein's Ghost: A Prussian General's Typology for AI Misalignment"*
 
-Article repo: [hammerstein-article](https://github.com/lerugray/hammerstein-article)
-
 ## The Typology
 
 Kurt von Hammerstein-Equord (attributed, 1933) classified officers into four types:
